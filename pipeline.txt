@@ -7,18 +7,21 @@ pipeline{
     environment {
         SCANNER_HOME=tool 'sonar-scanner'
     }
+    triggers {
+        githubPush()
+    }
     stages {
-        stage('clean workspace'){
+        stage('Clean Workspace'){
             steps{
                 cleanWs()
             }
         }
-        stage('Checkout from Git'){
+        stage('Checkout from GitHub'){
             steps{
-                git branch: 'main', url: 'https://github.com/Aj7Ay/Netflix-clone.git'
+                git branch: 'main', url: 'https://github.com/zohaibterminator/Secure-Web-App-Deployment.git'
             }
         }
-        stage("Sonarqube Analysis "){
+        stage("SonarQube Analysis "){
             steps{
                 withSonarQubeEnv('sonar-server') {
                     sh ''' $SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=Netflix \
@@ -38,7 +41,7 @@ pipeline{
                 sh "npm install"
             }
         }
-        stage('OWASP FS Scan') {
+        stage('OWASP Deps Scan') {
             steps {
                 dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit', odcInstallation: 'DP-Check'
                 dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
@@ -47,12 +50,18 @@ pipeline{
         stage('Trivy FS Scan') {
             steps {
                 sh "trivy fs . > trivyfs.txt"
+                script {
+                    def report = readFile('trivyfs.txt')
+                    if (report.contains("CRITICAL")) {
+                        error("Trivy scan found CRITICAL vulnerabilities in the Files. Aborting pipeline.")
+                    }
+                }
             }
         }
         stage("Docker Build & Push"){
             steps{
                 script{
-                   withDockerRegistry(credentialsId: 'docker', toolName: 'docker'){   
+                   withDockerRegistry(credentialsId: 'docker', toolName: 'docker'){
                        sh "docker build --build-arg TMDB_V3_API_KEY=d87fc7ccb45735f61d38df28b1cba9d3 -t netflix ."
                        sh "docker tag netflix zohaibsaqib69/netflix-app:latest "
                        sh "docker push zohaibsaqib69/netflix-app:latest "
@@ -71,12 +80,19 @@ pipeline{
                 }
             }
         }
-        stage('Deploy to Docker'){
+        stage('Deploy to Container'){
             steps{
-                sh 'docker run -d -p 8081:80 zohaibsaqib69/netflix-app:latest'
+                sh '''
+                    if [ "$(docker ps -q -f name=netflix-app)" ]; then
+                        echo "Stopping and removing existing container..."
+                        docker stop netflix-app
+                        docker rm netflix-app
+                    fi
+                '''
+                sh 'docker run -d --name netflix-app -p 8081:80 zohaibsaqib69/netflix-app:latest'
             }
         }
-        stage('Deploy to Kubernets'){
+        stage('Deploy to Kubernetes'){
             steps{
                 script{
                     dir('Kubernetes') {
@@ -88,7 +104,6 @@ pipeline{
                 }
             }
         }
-
     }
     post {
      always {
@@ -97,7 +112,7 @@ pipeline{
             body: "Project: ${env.JOB_NAME}<br/>" +
                 "Build Number: ${env.BUILD_NUMBER}<br/>" +
                 "URL: ${env.BUILD_URL}<br/>",
-            to: 'zohaibsaqib803@gmail.com',                                #change mail here
+            to: 'zohaibsaqib803@gmail.com',
             attachmentsPattern: 'trivyfs.txt,trivyimage.txt'
         }
     }
