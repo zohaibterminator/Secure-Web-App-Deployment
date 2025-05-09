@@ -13,6 +13,3 @@ function longFunction() {
         console.log("Line " + i);
     }
 }
-
-const userInput = "2 + 2";
-eval(userInput);
