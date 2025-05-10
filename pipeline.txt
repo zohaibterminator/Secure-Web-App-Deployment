@@ -1,0 +1,119 @@
+pipeline{
+    agent any
+    tools{
+        jdk 'jdk17'
+        nodejs 'node16'
+    }
+    environment {
+        SCANNER_HOME=tool 'sonar-scanner'
+    }
+    triggers {
+        githubPush()
+    }
+    stages {
+        stage('Clean Workspace'){
+            steps{
+                cleanWs()
+            }
+        }
+        stage('Checkout from GitHub'){
+            steps{
+                git branch: 'main', url: 'https://github.com/zohaibterminator/Secure-Web-App-Deployment.git'
+            }
+        }
+        stage("SonarQube Analysis "){
+            steps{
+                withSonarQubeEnv('sonar-server') {
+                    sh ''' $SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=Netflix \
+                    -Dsonar.projectKey=Netflix '''
+                }
+            }
+        }
+        stage("Quality Gate"){
+           steps {
+                script {
+                    waitForQualityGate abortPipeline: false, credentialsId: 'Sonar-token' 
+                }
+            } 
+        }
+        stage('Install Dependencies') {
+            steps {
+                sh "npm install"
+            }
+        }
+        stage('OWASP Deps Scan') {
+            steps {
+                dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit', odcInstallation: 'DP-Check'
+                dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+            }
+        }
+        stage('Trivy FS Scan') {
+            steps {
+                sh "trivy fs . > trivyfs.txt"
+                script {
+                    def report = readFile('trivyfs.txt')
+                    if (report.contains("CRITICAL")) {
+                        error("Trivy scan found CRITICAL vulnerabilities in the Files. Aborting pipeline.")
+                    }
+                }
+            }
+        }
+        stage("Docker Build & Push"){
+            steps{
+                script{
+                   withDockerRegistry(credentialsId: 'docker', toolName: 'docker'){
+                       sh "docker build --build-arg TMDB_V3_API_KEY=d87fc7ccb45735f61d38df28b1cba9d3 -t netflix ."
+                       sh "docker tag netflix zohaibsaqib69/netflix-app:latest "
+                       sh "docker push zohaibsaqib69/netflix-app:latest "
+                    }
+                }
+            }
+        }
+        stage("Trivy Image Scan") {
+            steps {
+                sh "trivy image zohaibsaqib69/netflix-app:latest > trivyimage.txt"
+                script {
+                    def report = readFile('trivyimage.txt')
+                    if (report.contains("CRITICAL")) {
+                        error("Trivy scan found CRITICAL vulnerabilities. Aborting pipeline.")
+                    }
+                }
+            }
+        }
+        stage('Deploy to Container'){
+            steps{
+                sh '''
+                    if [ "$(docker ps -q -f name=netflix-app)" ]; then
+                        echo "Stopping and removing existing container..."
+                        docker stop netflix-app
+                        docker rm netflix-app
+                    fi
+                '''
+                sh 'docker run -d --name netflix-app -p 8081:80 zohaibsaqib69/netflix-app:latest'
+            }
+        }
+        stage('Deploy to Kubernetes'){
+            steps{
+                script{
+                    dir('Kubernetes') {
+                        withKubeConfig(caCertificate: '', clusterName: '', contextName: '', credentialsId: 'k8s', namespace: '', restrictKubeConfigAccess: false, serverUrl: '') {
+                                sh 'kubectl apply -f deployment.yml'
+                                sh 'kubectl apply -f service.yml'
+                        }   
+                    }
+                }
+            }
+        }
+    }
+    post {
+     always {
+        emailext attachLog: true,
+            subject: "'${currentBuild.result}'",
+            body: "Project: ${env.JOB_NAME}<br/>" +
+                "Build Number: ${env.BUILD_NUMBER}<br/>" +
+                "URL: ${env.BUILD_URL}<br/>",
+            to: 'zohaibsaqib803@gmail.com',
+            attachmentsPattern: 'trivyfs.txt,trivyimage.txt'
+        }
+    }
+}
