@@ -3,6 +3,8 @@
  * Remove after testing your CI/CD pipeline failure scenario
  */
 
+export {};
+
 // 1. Security Hotspot - Hardcoded credentials
 const DB_PASSWORD = 'admin123'; // sonar: Hardcoded credentials are security risks
 
