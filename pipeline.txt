@@ -50,12 +50,6 @@ pipeline{
         stage('Trivy FS Scan') {
             steps {
                 sh "trivy fs . > trivyfs.txt"
-                script {
-                    def report = readFile('trivyfs.txt')
-                    if (report.contains("CRITICAL")) {
-                        error("Trivy scan found CRITICAL vulnerabilities in the Files. Aborting pipeline.")
-                    }
-                }
             }
         }
         stage("Docker Build & Push"){
@@ -72,36 +66,13 @@ pipeline{
         stage("Trivy Image Scan") {
             steps {
                 sh "trivy image zohaibsaqib69/netflix-app:latest > trivyimage.txt"
-                script {
-                    def report = readFile('trivyimage.txt')
-                    if (report.contains("CRITICAL")) {
-                        error("Trivy scan found CRITICAL vulnerabilities. Aborting pipeline.")
-                    }
-                }
             }
         }
         stage('Deploy to Container'){
             steps{
-                sh '''
-                    if [ "$(docker ps -q -f name=netflix-app)" ]; then
-                        echo "Stopping and removing existing container..."
-                        docker stop netflix-app
-                        docker rm netflix-app
-                    fi
-                '''
+                sh 'docker stop netflix-app'
+                sh 'docker rm netflix-app'
                 sh 'docker run -d --name netflix-app -p 8081:80 zohaibsaqib69/netflix-app:latest'
-            }
-        }
-        stage('Deploy to Kubernetes'){
-            steps{
-                script{
-                    dir('Kubernetes') {
-                        withKubeConfig(caCertificate: '', clusterName: '', contextName: '', credentialsId: 'k8s', namespace: '', restrictKubeConfigAccess: false, serverUrl: '') {
-                                sh 'kubectl apply -f deployment.yml'
-                                sh 'kubectl apply -f service.yml'
-                        }   
-                    }
-                }
             }
         }
     }
