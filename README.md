@@ -53,3 +53,9 @@ This project demonstrates a complete **DevSecOps pipeline** built with a focus o
   - Prometheus (9090)
   - Grafana (3000)
 - Git & basic shell scripting knowledge
+
+---
+
+## Contributers
+- [Zohaib Saqib](https://www.linkedin.com/in/muhammadzohaibsaqib/)
+- [Hassan Gatta](https://www.linkedin.com/in/hassaan-gatta-047865257/)
