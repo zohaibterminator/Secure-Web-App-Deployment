@@ -1,10 +1,10 @@
-# 🔐 DevSecOps CI/CD Pipeline with Integrated Security and Monitoring
+# DevSecOps CI/CD Pipeline with Integrated Security and Monitoring
 
 This project demonstrates a complete **DevSecOps pipeline** built with a focus on security, automation, and observability. It includes continuous integration, security scanning, containerization, deployment to AWS, and full monitoring of both the application and the CI/CD pipeline.
 
 ---
 
-## 🚀 Project Highlights
+## Project Highlights
 
 - ✅ **CI/CD Pipeline:** Implemented using Jenkins
 - 🐳 **Containerization:** Docker used for building and packaging the application
@@ -19,7 +19,7 @@ This project demonstrates a complete **DevSecOps pipeline** built with a focus o
 
 ---
 
-## 🔄 CI/CD Workflow Overview
+## CI/CD Workflow Overview
 
 1. **Code Push to Git**  
 2. **Jenkins Triggers Pipeline**  
@@ -32,7 +32,7 @@ This project demonstrates a complete **DevSecOps pipeline** built with a focus o
 
 ---
 
-## 📊 Monitoring Setup
+## Monitoring Setup
 
 - **Prometheus** scrapes metrics from:
   - Application endpoints
@@ -43,7 +43,7 @@ This project demonstrates a complete **DevSecOps pipeline** built with a focus o
 
 ---
 
-## 🚧 Prerequisites
+## Prerequisites
 
 - Docker & Docker Compose
 - Jenkins installed (or use the provided Docker setup)
