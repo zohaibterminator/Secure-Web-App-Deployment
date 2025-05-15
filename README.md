@@ -46,7 +46,7 @@ This project demonstrates a complete **DevSecOps pipeline** built with a focus o
 ## Prerequisites
 
 - Docker & Docker Compose
-- Jenkins installed (or use the provided Docker setup)
+- Jenkins installed
 - AWS EC2 instance with ports open for:
   - Jenkins (8080)
   - SonarQube (9000)
